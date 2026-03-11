@@ -67,11 +67,17 @@ class MavDepartureCard extends HTMLElement {
     }
 
     const departures = (stateObj.attributes.departures || []).slice(0, maxItems);
+    const originCode = stateObj.attributes.start_station_code || "";
+    const destinationCode = stateObj.attributes.end_station_code || "";
+    const routeInfo =
+      originCode || destinationCode
+        ? `<div class="route-info">${this._escapeHtml(originCode)} → ${this._escapeHtml(destinationCode)}</div>`
+        : "";
 
     if (departures.length === 0) {
       this.shadowRoot.innerHTML = this._wrapCard(
         title,
-        `<p class="no-data">No upcoming departures found.</p>`
+        `${routeInfo}<p class="no-data">No upcoming departures found.</p>`
       );
       return;
     }
@@ -80,7 +86,7 @@ class MavDepartureCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = this._wrapCard(
       title,
-      `<table>
+      `${routeInfo}<table>
         <thead>
           <tr>
             <th>Train</th>
@@ -177,6 +183,11 @@ class MavDepartureCard extends HTMLElement {
         }
         .delayed {
           color: var(--error-color, #e53935);
+        }
+        .route-info {
+          padding: 0 16px 6px;
+          font-size: 0.85em;
+          color: var(--secondary-text-color);
         }
         .warning, .no-data {
           padding: 12px 16px;

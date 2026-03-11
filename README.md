@@ -19,6 +19,10 @@ A [HACS](https://hacs.xyz/) custom integration that pulls **real-time departure 
 
 > _Once installed the card looks like a station departure board:_
 
+| | |
+|---|---|
+| **Route** | 005501016 → 005500709 |
+
 | Train | Scheduled | Expected | Delay |
 |-------|-----------|----------|-------|
 | IC 703 | 07:30 | 07:30 | On time |
