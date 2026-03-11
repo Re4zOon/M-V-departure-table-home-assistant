@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "MÁV Departure Table",
+        "description": "Enter the MÁV station codes for the route you want to track.\n\nTo find a station code: open https://jegy.mav.hu, perform a search between your stations, and inspect the network request to `GetOfferRequest` — the `startStationCode` and `endStationCode` fields contain the 9-digit codes you need.",
+        "data": {
+          "start_station_code": "Origin station code",
+          "end_station_code": "Destination station code",
+          "max_departures": "Maximum departures to display"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to reach the MÁV API. Please check the station codes and your internet connection.",
+      "unknown": "Unexpected error. Please check the Home Assistant logs."
+    },
+    "abort": {
+      "already_configured": "This route is already configured."
+    }
+  }
+}

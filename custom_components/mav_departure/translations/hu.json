@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "MÁV Indulási Tábla",
+        "description": "Add meg az útvonal MÁV állomáskódjait.\n\nAz állomáskód meghatározása: nyisd meg a https://jegy.mav.hu oldalt, keress az állomások között, majd a fejlesztői eszközökben (F12) nézd meg a `GetOfferRequest` hálózati kérést — a `startStationCode` és `endStationCode` mezők tartalmazzák a 9 jegyű kódokat.",
+        "data": {
+          "start_station_code": "Indulóállomás kódja",
+          "end_station_code": "Célállomás kódja",
+          "max_departures": "Megjelenítendő indulások max. száma"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nem sikerült elérni a MÁV API-t. Ellenőrizd az állomáskódokat és az internetkapcsolatot.",
+      "unknown": "Ismeretlen hiba. Ellenőrizd a Home Assistant naplókat."
+    },
+    "abort": {
+      "already_configured": "Ez az útvonal már be van állítva."
+    }
+  }
+}
