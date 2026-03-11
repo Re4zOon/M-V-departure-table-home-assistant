@@ -73,6 +73,13 @@ ha_components.__path__ = []
 ha_sensor = _register("homeassistant.components.sensor")
 ha_sensor.SensorEntity = object
 
+
+class _FakeSensorDeviceClass:
+    TIMESTAMP = "timestamp"
+
+
+ha_sensor.SensorDeviceClass = _FakeSensorDeviceClass
+
 # homeassistant.helpers
 ha_helpers = _register("homeassistant.helpers")
 ha_helpers.__path__ = []
@@ -123,12 +130,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from custom_components.mav_departure.api import (  # noqa: E402
+    Departure,
     MavApiClient,
     MavApiError,
     _extract_train_info,
     _parse_datetime,
 )
+from custom_components.mav_departure.const import (  # noqa: E402
+    CONF_END_STATION_CODE,
+    CONF_START_STATION_CODE,
+)
 from custom_components.mav_departure.config_flow import _validate_station_codes  # noqa: E402
+from custom_components.mav_departure.sensor import MavDepartureSensor  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # _parse_datetime
@@ -425,6 +438,26 @@ def test_validate_station_codes_allows_no_offers(monkeypatch):
     assert asyncio.run(_validate_station_codes(object(), "005501016", "005500709")) is None
 
 
+def test_validate_station_codes_allows_plain_no_offers(monkeypatch):
+    class _RaisingNoOffersClient:
+        def __init__(self, _session):
+            pass
+
+        async def get_departures(self, _start, _end):
+            raise MavApiError("No offers found")
+
+    monkeypatch.setattr(
+        "custom_components.mav_departure.config_flow.async_get_clientsession",
+        lambda _hass: object(),
+    )
+    monkeypatch.setattr(
+        "custom_components.mav_departure.config_flow.MavApiClient",
+        _RaisingNoOffersClient,
+    )
+
+    assert asyncio.run(_validate_station_codes(object(), "005501016", "005500709")) is None
+
+
 def test_validate_station_codes_still_returns_cannot_connect(monkeypatch):
     class _RaisingConnectionClient:
         def __init__(self, _session):
@@ -446,3 +479,29 @@ def test_validate_station_codes_still_returns_cannot_connect(monkeypatch):
         asyncio.run(_validate_station_codes(object(), "005501016", "005500709"))
         == "cannot_connect"
     )
+
+
+def test_sensor_native_value_is_datetime_timestamp():
+    dep = Departure(
+        scheduled_departure=datetime(2024, 3, 11, 7, 30, tzinfo=timezone.utc),
+        expected_departure=datetime(2024, 3, 11, 7, 30, tzinfo=timezone.utc),
+        delay_minutes=0,
+        has_delay=False,
+        train_sign="IC 703",
+        train_type="InterCity",
+        train_origin="Budapest-Keleti",
+        train_destination="Győr",
+        travel_time_minutes=60,
+    )
+    coordinator = types.SimpleNamespace(data=[dep])
+    entry = types.SimpleNamespace(
+        data={
+            CONF_START_STATION_CODE: "005501016",
+            CONF_END_STATION_CODE: "005500709",
+        }
+    )
+
+    sensor = MavDepartureSensor(coordinator, entry)
+    assert sensor.native_value is not None
+    assert isinstance(sensor.native_value, datetime)
+    assert sensor._attr_device_class == "timestamp"

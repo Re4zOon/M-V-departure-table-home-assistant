@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -35,14 +35,21 @@ from .coordinator import MavDepartureCoordinator
 
 def _serialize_datetime(value: datetime | None) -> str | None:
     """Serialize datetime values consistently as ISO-8601."""
+    local_dt = _to_local_datetime(value)
+    if local_dt is None:
+        return None
+    return local_dt.isoformat()
+
+
+def _to_local_datetime(value: datetime | None) -> datetime | None:
+    """Return a timezone-aware/localized datetime for Home Assistant."""
     if value is None:
         return None
     if value.tzinfo is None:
         default_tz = getattr(dt_util, "DEFAULT_TIME_ZONE", None)
         if default_tz is not None:
             value = value.replace(tzinfo=default_tz)
-    local_dt = dt_util.as_local(value) if value.tzinfo else value
-    return local_dt.isoformat()
+    return dt_util.as_local(value) if value.tzinfo else value
 
 
 async def async_setup_entry(
@@ -59,6 +66,7 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
     """Sensor that exposes upcoming train departures for a single route."""
 
     _attr_icon = "mdi:train"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_has_entity_name = True
     _attr_name = None  # use the config-entry title as the entity name
 
@@ -79,14 +87,13 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
     # ------------------------------------------------------------------
 
     @property
-    def native_value(self) -> str | None:
-        """Return the next scheduled departure time as an ISO string, or None."""
+    def native_value(self) -> datetime | None:
+        """Return the next scheduled departure datetime, or None."""
         departures = self.coordinator.data
         if not departures:
             return None
         first = departures[0]
-        dt = first.scheduled_departure
-        return _serialize_datetime(dt)
+        return _to_local_datetime(first.scheduled_departure)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

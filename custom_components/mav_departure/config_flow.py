@@ -21,7 +21,7 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
-_NO_OFFERS_ERROR_TEXTS = {"no offers found", "máv api error: no offers found"}
+_NO_OFFERS_ERROR_MARKERS = ("no offers found",)
 
 _STEP_SCHEMA = vol.Schema(
     {
@@ -46,7 +46,7 @@ async def _validate_station_codes(
         await client.get_departures(start_code, end_code)
     except MavApiError as err:
         error_text = str(err).strip().lower()
-        if error_text in _NO_OFFERS_ERROR_TEXTS:
+        if any(marker in error_text for marker in _NO_OFFERS_ERROR_MARKERS):
             return None
         _LOGGER.debug("Station code validation failed: %s", err)
         return "cannot_connect"
