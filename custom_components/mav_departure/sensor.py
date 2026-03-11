@@ -68,7 +68,7 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
     _attr_icon = "mdi:train"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_has_entity_name = True
-    _attr_name = None  # use the config-entry title as the entity name
+    _attr_name = "Next departure"
 
     def __init__(
         self,
