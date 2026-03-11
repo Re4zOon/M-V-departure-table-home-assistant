@@ -69,6 +69,10 @@ ha_core.HomeAssistant = object
 ha_components = _register("homeassistant.components")
 ha_components.__path__ = []
 
+# homeassistant.components.frontend
+ha_frontend = _register("homeassistant.components.frontend")
+ha_frontend.add_extra_js_url = MagicMock()
+
 # homeassistant.components.sensor
 ha_sensor = _register("homeassistant.components.sensor")
 ha_sensor.SensorEntity = object
@@ -505,3 +509,29 @@ def test_sensor_native_value_is_datetime_timestamp():
     assert sensor.native_value is not None
     assert isinstance(sensor.native_value, datetime)
     assert sensor._attr_device_class == "timestamp"
+
+
+# ---------------------------------------------------------------------------
+# async_setup — Lovelace card registration
+# ---------------------------------------------------------------------------
+
+
+def test_async_setup_registers_card_resource():
+    """Verify async_setup registers the Lovelace JS card as a frontend resource."""
+    from custom_components.mav_departure import async_setup, CARD_URL
+
+    ha_frontend.add_extra_js_url.reset_mock()
+
+    mock_hass = MagicMock()
+    mock_hass.data = {}
+    mock_hass.http = MagicMock()
+
+    result = asyncio.run(async_setup(mock_hass, {}))
+
+    assert result is True
+    mock_hass.http.register_static_path.assert_called_once()
+    args = mock_hass.http.register_static_path.call_args
+    assert args[0][0] == CARD_URL
+    assert "mav-departure-card.js" in args[0][1]
+    ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)
+    assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True

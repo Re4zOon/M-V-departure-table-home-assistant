@@ -45,6 +45,18 @@ A [HACS](https://hacs.xyz/) custom integration that pulls **real-time departure 
 
 ---
 
+## Upgrading from a previous version
+
+If you installed an earlier version that required **manual** card setup, clean up the old files after upgrading:
+
+1. **Delete** `<config>/www/mav-departure-card.js` — the JS file now ships inside the integration and is served automatically.
+2. **Remove the Lovelace resource** — go to **Settings → Dashboards → ⋮ (three-dot menu) → Resources** and delete the `/local/mav-departure-card.js` entry.
+3. **Restart** Home Assistant.
+
+Your existing dashboard cards (`custom:mav-departure-card`) will continue to work without any changes.
+
+---
+
 ## Setup
 
 ### 1. Find your station codes
@@ -87,16 +99,7 @@ The integration will immediately validate your station codes against the live AP
 
 ## Lovelace card
 
-### Install the card resource
-
-Card resource installation is currently **manual**:
-
-1. Copy `www/mav-departure-card.js` to `<config>/www/mav-departure-card.js`.
-2. Go to **Settings → Dashboards → three-dot menu → Resources**.
-3. Add a new resource:
-   - URL: `/local/mav-departure-card.js`
-   - Type: **JavaScript module**
-4. Reload the page (hard refresh).
+The Lovelace card is **automatically registered** when the integration is loaded — no manual resource setup is needed.
 
 ### Add the card to your dashboard
 

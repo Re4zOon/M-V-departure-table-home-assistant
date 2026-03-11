@@ -5,11 +5,7 @@
  * Displays a departure board showing scheduled / expected times and delays
  * for a configured MÁV sensor entity.
  *
- * Installation (manual):
- *   1. Copy this file to <config>/www/mav-departure-card.js
- *   2. In Settings → Dashboards → Resources add:
- *        URL:  /local/mav-departure-card.js
- *        Type: JavaScript module
+ * This card is automatically registered when the integration is loaded.
  *
  * Card configuration example:
  *   type: custom:mav-departure-card
