@@ -6,7 +6,7 @@ import asyncio
 import sys
 import types
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -68,6 +68,20 @@ ha_core.HomeAssistant = object
 # homeassistant.components
 ha_components = _register("homeassistant.components")
 ha_components.__path__ = []
+
+# homeassistant.components.http
+ha_http = _register("homeassistant.components.http")
+ha_http.__path__ = []
+
+
+class _FakeStaticPathConfig:
+    def __init__(self, url_path, path, cache_headers=True):
+        self.url_path = url_path
+        self.path = path
+        self.cache_headers = cache_headers
+
+
+ha_http.StaticPathConfig = _FakeStaticPathConfig
 
 # homeassistant.components.frontend
 ha_frontend = _register("homeassistant.components.frontend")
@@ -525,13 +539,15 @@ def test_async_setup_registers_card_resource():
     mock_hass = MagicMock()
     mock_hass.data = {}
     mock_hass.http = MagicMock()
+    mock_hass.http.async_register_static_paths = AsyncMock()
 
     result = asyncio.run(async_setup(mock_hass, {}))
 
     assert result is True
-    mock_hass.http.register_static_path.assert_called_once()
-    args = mock_hass.http.register_static_path.call_args
-    assert args[0][0] == CARD_URL
-    assert "mav-departure-card.js" in args[0][1]
+    mock_hass.http.async_register_static_paths.assert_called_once()
+    args = mock_hass.http.async_register_static_paths.call_args
+    static_path_config = args[0][0][0]
+    assert static_path_config.url_path == CARD_URL
+    assert "mav-departure-card.js" in static_path_config.path
     ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)
     assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True

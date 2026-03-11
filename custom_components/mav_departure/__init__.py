@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -38,10 +39,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         if not hasattr(hass, "http") or hass.http is None:
             _LOGGER.warning("HTTP server not available; skipping card registration")
             return True
-        hass.http.register_static_path(
-            CARD_URL,
-            str(Path(__file__).parent / CARD_JS),
-            True,
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(CARD_URL, str(Path(__file__).parent / CARD_JS), True)]
         )
         add_extra_js_url(hass, CARD_URL)
         internal["card_registered"] = True
