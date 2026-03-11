@@ -86,9 +86,7 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
         if not departures:
             return None
         first = departures[0]
-        dt: datetime = first.scheduled_departure
-        if dt is None:
-            return None
+        dt = first.scheduled_departure
         return _serialize_datetime(dt)
 
     @property

@@ -6,6 +6,7 @@ access and a third-party API being reachable.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -21,8 +22,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.asyncio
-async def test_live_offer_request_returns_json() -> None:
+def test_live_offer_request_returns_json() -> None:
     """Verify the live MÁV endpoint responds to a real offer request payload."""
     payload = {
         "offerkind": "1",
@@ -54,11 +54,14 @@ async def test_live_offer_request_returns_json() -> None:
         "Language": "hu",
     }
 
-    timeout = aiohttp.ClientTimeout(total=30)
-    async with aiohttp.ClientSession(timeout=timeout) as session:
-        async with session.post(MAV_API_URL, json=payload, headers=headers) as response:
-            assert response.status == 200
-            data = await response.json(content_type=None)
+    async def _execute_live_request():
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(MAV_API_URL, json=payload, headers=headers) as response:
+                assert response.status == 200
+                return await response.json(content_type=None)
+
+    data = asyncio.run(_execute_live_request())
 
     assert isinstance(data, dict)
     # We primarily care about API communication and schema-level compatibility.

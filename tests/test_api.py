@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 import types
 from datetime import datetime, timedelta, timezone
@@ -352,9 +353,20 @@ class TestParseRoute:
         assert len(result) == 1
         assert result[0].train_sign == "IC 703"
 
+    def test_parse_response_raises_for_api_error_message(self):
+        with pytest.raises(MavApiError, match="No offers found"):
+            self.client._parse_response({"errorMessage": "No offers found"})
 
-@pytest.mark.asyncio
-async def test_get_departures_raises_mavapierror_on_invalid_json():
+    def test_parse_response_raises_when_route_missing(self):
+        with pytest.raises(MavApiError, match="missing route"):
+            self.client._parse_response({})
+
+    def test_parse_response_raises_when_route_shape_invalid(self):
+        with pytest.raises(MavApiError, match="invalid route format"):
+            self.client._parse_response({"route": {"not": "a list"}})
+
+
+def test_get_departures_raises_mavapierror_on_invalid_json():
     class _InvalidJsonResponse:
         def raise_for_status(self):
             return None
@@ -375,7 +387,9 @@ async def test_get_departures_raises_mavapierror_on_invalid_json():
         def post(self, *args, **kwargs):
             return _InvalidJsonResponse()
 
-    client = MavApiClient(session=_Session())
+    async def _run_invalid_json_scenario():
+        client = MavApiClient(session=_Session())
+        with pytest.raises(MavApiError, match="invalid JSON"):
+            await client.get_departures("005501016", "005500709")
 
-    with pytest.raises(MavApiError, match="invalid JSON"):
-        await client.get_departures("005501016", "005500709")
+    asyncio.run(_run_invalid_json_scenario())

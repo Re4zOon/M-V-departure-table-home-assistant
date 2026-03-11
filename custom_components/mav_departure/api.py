@@ -116,9 +116,21 @@ class MavApiClient:
     # ------------------------------------------------------------------
 
     def _parse_response(self, data: dict[str, Any]) -> list[Departure]:
-        routes = data.get("route") or []
+        error_message = data.get("errorMessage")
+        if error_message:
+            raise MavApiError(f"MÁV API returned error: {error_message}")
+
+        routes = data.get("route")
+        if routes is None:
+            raise MavApiError("MÁV API response missing route data")
+        if not isinstance(routes, list):
+            raise MavApiError("MÁV API response has invalid route format")
+
         departures: list[Departure] = []
         for route in routes:
+            if not isinstance(route, dict):
+                _LOGGER.debug("Skipping non-dict route entry: %r", route)
+                continue
             try:
                 departure = self._parse_route(route)
             except Exception as err:  # noqa: BLE001
@@ -177,10 +189,12 @@ class MavApiClient:
 
 
 def _parse_datetime(value: str) -> datetime | None:
-    """Parse an ISO-8601 datetime string into a timezone-aware datetime.
+    """Parse an ISO-8601 datetime string into a datetime object.
 
-    Tries HA's dt_util first (handles timezone offsets correctly), then falls
-    back to the stdlib fromisoformat added in Python 3.11.
+    Tries Home Assistant's dt_util.parse_datetime() first (which understands
+    timezone offsets and HA's configured timezone), then falls back to
+    datetime.fromisoformat(). The returned datetime may be naive or
+    timezone-aware depending on the input string.
     """
     if not value:
         return None
