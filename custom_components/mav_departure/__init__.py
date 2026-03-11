@@ -31,13 +31,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     internal = domain_data.setdefault("_internal", {})
     if not internal.get("card_registered", False):
         try:
-            from homeassistant.components.frontend import (  # noqa: WPS433
-                add_extra_js_url,
-            )
+            from homeassistant.components.frontend import add_extra_js_url
         except ImportError:
             _LOGGER.warning("Frontend component not available; skipping card registration")
             return True
-        if not getattr(hass, "http", None):
+        if not hasattr(hass, "http") or hass.http is None:
             _LOGGER.warning("HTTP server not available; skipping card registration")
             return True
         hass.http.register_static_path(
