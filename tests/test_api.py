@@ -534,3 +534,4 @@ def test_async_setup_registers_card_resource():
     assert args[0][0] == CARD_URL
     assert "mav-departure-card.js" in args[0][1]
     ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)
+    assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True

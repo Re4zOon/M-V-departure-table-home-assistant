@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
-from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -19,22 +19,34 @@ from .const import (
 )
 from .coordinator import MavDepartureCoordinator
 
+_LOGGER = logging.getLogger(__name__)
+
 CARD_JS = "mav-departure-card.js"
 CARD_URL = f"/{DOMAIN}/{CARD_JS}"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Register the Lovelace card as a static resource."""
-    # Guard against duplicate registration across reloads using a domain-scoped flag.
+    """Register the Lovelace card as a static resource (best-effort)."""
     domain_data = hass.data.setdefault(DOMAIN, {})
-    if not domain_data.get("card_registered", False):
+    internal = domain_data.setdefault("_internal", {})
+    if not internal.get("card_registered", False):
+        try:
+            from homeassistant.components.frontend import (  # noqa: WPS433
+                add_extra_js_url,
+            )
+        except ImportError:
+            _LOGGER.warning("Frontend component not available; skipping card registration")
+            return True
+        if not getattr(hass, "http", None):
+            _LOGGER.warning("HTTP server not available; skipping card registration")
+            return True
         hass.http.register_static_path(
             CARD_URL,
             str(Path(__file__).parent / CARD_JS),
             True,
         )
         add_extra_js_url(hass, CARD_URL)
-        domain_data["card_registered"] = True
+        internal["card_registered"] = True
     return True
 
 
