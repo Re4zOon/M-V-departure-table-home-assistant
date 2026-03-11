@@ -520,8 +520,11 @@ def test_async_setup_registers_card_resource():
     """Verify async_setup registers the Lovelace JS card as a frontend resource."""
     from custom_components.mav_departure import async_setup, CARD_URL
 
+    ha_frontend.add_extra_js_url.reset_mock()
+
     mock_hass = MagicMock()
     mock_hass.data = {}
+    mock_hass.http = MagicMock()
 
     result = asyncio.run(async_setup(mock_hass, {}))
 
@@ -530,4 +533,4 @@ def test_async_setup_registers_card_resource():
     args = mock_hass.http.register_static_path.call_args
     assert args[0][0] == CARD_URL
     assert "mav-departure-card.js" in args[0][1]
-    ha_frontend.add_extra_js_url.assert_called_with(mock_hass, CARD_URL)
+    ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)

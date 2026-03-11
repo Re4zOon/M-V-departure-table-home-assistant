@@ -25,14 +25,16 @@ CARD_URL = f"/{DOMAIN}/{CARD_JS}"
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Register the Lovelace card as a static resource."""
-    # Guard against duplicate registration across reloads.
-    if CARD_URL not in hass.data.get("frontend_extra_module_url", set()):
+    # Guard against duplicate registration across reloads using a domain-scoped flag.
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get("card_registered", False):
         hass.http.register_static_path(
             CARD_URL,
             str(Path(__file__).parent / CARD_JS),
             True,
         )
         add_extra_js_url(hass, CARD_URL)
+        domain_data["card_registered"] = True
     return True
 
 
