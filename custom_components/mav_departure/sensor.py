@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import datetime
 from typing import Any
 
@@ -32,9 +31,16 @@ from .const import (
 )
 from .coordinator import MavDepartureCoordinator
 
-_LOGGER = logging.getLogger(__name__)
-
-_ISO_FMT = "%Y-%m-%dT%H:%M:%S%z"
+def _serialize_datetime(value: datetime | None) -> str | None:
+    """Serialize datetime values consistently as ISO-8601."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        default_tz = getattr(dt_util, "DEFAULT_TIME_ZONE", None)
+        if default_tz is not None:
+            value = value.replace(tzinfo=default_tz)
+    local_dt = dt_util.as_local(value) if value.tzinfo else value
+    return local_dt.isoformat()
 
 
 async def async_setup_entry(
@@ -81,9 +87,7 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
         dt: datetime = first.scheduled_departure
         if dt is None:
             return None
-        # Return in the HA-local timezone so Lovelace formats it correctly
-        local_dt = dt_util.as_local(dt) if dt.tzinfo else dt
-        return local_dt.strftime(_ISO_FMT)
+        return _serialize_datetime(dt)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -98,16 +102,8 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
 
             departure_list.append(
                 {
-                    ATTR_SCHEDULED: (
-                        dt_util.as_local(scheduled).strftime(_ISO_FMT)
-                        if scheduled and scheduled.tzinfo
-                        else str(scheduled)
-                    ),
-                    ATTR_EXPECTED: (
-                        dt_util.as_local(expected).strftime(_ISO_FMT)
-                        if expected and expected.tzinfo
-                        else str(expected)
-                    ),
+                    ATTR_SCHEDULED: _serialize_datetime(scheduled),
+                    ATTR_EXPECTED: _serialize_datetime(expected),
                     ATTR_DELAY_MINUTES: dep.delay_minutes,
                     ATTR_HAS_DELAY: dep.has_delay,
                     ATTR_TRAIN_SIGN: dep.train_sign,

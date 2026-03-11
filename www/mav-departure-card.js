@@ -58,9 +58,10 @@ class MavDepartureCard extends HTMLElement {
     }
 
     if (!stateObj) {
+      const entity = this._escapeHtml(this._config.entity);
       this.shadowRoot.innerHTML = this._wrapCard(
         title,
-        `<p class="warning">Entity not found: ${this._config.entity}</p>`
+        `<p class="warning">Entity not found: ${entity}</p>`
       );
       return;
     }
@@ -94,14 +95,16 @@ class MavDepartureCard extends HTMLElement {
   }
 
   _renderRow(dep) {
-    const scheduled = this._formatTime(dep.scheduled);
-    const expected = this._formatTime(dep.expected);
+    const scheduled = this._escapeHtml(this._formatTime(dep.scheduled));
+    const expected = this._escapeHtml(this._formatTime(dep.expected));
     const delayClass = dep.has_delay ? "delayed" : "on-time";
-    const delayLabel = dep.has_delay ? `+${dep.delay_minutes} min` : "On time";
-    const sign = dep.train_sign || "—";
+    const delayLabel = dep.has_delay
+      ? this._escapeHtml(`+${dep.delay_minutes} min`)
+      : "On time";
+    const sign = this._escapeHtml(dep.train_sign || "—");
 
     return `<tr class="${dep.has_delay ? "row-delayed" : ""}">
-      <td class="train-sign">${this._escapeHtml(sign)}</td>
+      <td class="train-sign">${sign}</td>
       <td>${scheduled}</td>
       <td class="${dep.has_delay ? "expected-delayed" : ""}">${expected}</td>
       <td class="delay ${delayClass}">${delayLabel}</td>

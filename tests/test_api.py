@@ -114,6 +114,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from custom_components.mav_departure.api import (  # noqa: E402
     MavApiClient,
+    MavApiError,
     _extract_train_info,
     _parse_datetime,
 )
@@ -299,3 +300,31 @@ class TestParseRoute:
         result = self.client._parse_response(data)
         assert len(result) == 1
         assert result[0].train_sign == "IC 703"
+
+
+@pytest.mark.asyncio
+async def test_get_departures_raises_mavapierror_on_invalid_json():
+    class _InvalidJsonResponse:
+        def raise_for_status(self):
+            return None
+
+        async def json(self, content_type=None):
+            raise ValueError("invalid json")
+
+        async def text(self):
+            return "<html>bad gateway</html>"
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class _Session:
+        def post(self, *args, **kwargs):
+            return _InvalidJsonResponse()
+
+    client = MavApiClient(session=_Session())
+
+    with pytest.raises(MavApiError, match="invalid JSON"):
+        await client.get_departures("005501016", "005500709")

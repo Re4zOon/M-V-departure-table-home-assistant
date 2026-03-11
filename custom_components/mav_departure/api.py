@@ -94,7 +94,12 @@ class MavApiClient:
                 timeout=timeout,
             ) as response:
                 response.raise_for_status()
-                data: dict[str, Any] = await response.json(content_type=None)
+                try:
+                    data: dict[str, Any] = await response.json(content_type=None)
+                except ValueError as err:
+                    body = await response.text()
+                    _LOGGER.debug("Unexpected non-JSON response from MÁV API: %s", body)
+                    raise MavApiError("MÁV API returned invalid JSON") from err
         except aiohttp.ClientResponseError as err:
             raise MavApiError(
                 f"MÁV API returned HTTP {err.status}: {err.message}"

@@ -21,9 +21,9 @@ A [HACS](https://hacs.xyz/) custom integration that pulls **real-time departure 
 
 | Train | Scheduled | Expected | Delay |
 |-------|-----------|----------|-------|
-| IC 703 | 07:30 | 07:30 | ✅ On time |
-| S50 221 | 07:45 | 07:52 | 🔴 +7 min |
-| IC 811 | 08:00 | 08:00 | ✅ On time |
+| IC 703 | 07:30 | 07:30 | On time |
+| S50 221 | 07:45 | 07:52 | +7 min |
+| IC 811 | 08:00 | 08:00 | On time |
 
 ---
 
@@ -87,10 +87,7 @@ The integration will immediately validate your station codes against the live AP
 
 ### Install the card resource
 
-**Option A — via HACS Frontend:**  
-Install the _MÁV Departure Table_ plugin from HACS → **Frontend**.
-
-**Option B — manually:**
+Card resource installation is currently **manual**:
 
 1. Copy `www/mav-departure-card.js` to `<config>/www/mav-departure-card.js`.
 2. Go to **Settings → Dashboards → three-dot menu → Resources**.

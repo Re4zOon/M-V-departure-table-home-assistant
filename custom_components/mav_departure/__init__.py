@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -11,16 +9,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import MavApiClient
 from .const import (
     CONF_END_STATION_CODE,
-    CONF_MAX_DEPARTURES,
     CONF_START_STATION_CODE,
-    DEFAULT_MAX_DEPARTURES,
     DEFAULT_SCAN_INTERVAL_MINUTES,
     DOMAIN,
     PLATFORMS,
 )
 from .coordinator import MavDepartureCoordinator
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
