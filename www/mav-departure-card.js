@@ -25,6 +25,34 @@ class MavDepartureCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (!this._config || !hass?.states) return;
+
+    const stateObj = hass.states[this._config.entity];
+    const maxItems = this._config.max_departures || 10;
+    const title = this._config.title || "";
+    const departures = stateObj?.attributes?.departures || [];
+    const baseKey = JSON.stringify({
+      entity: this._config.entity,
+      missing: !stateObj,
+      lastUpdated: stateObj?.last_updated || null,
+      state: stateObj?.state || null,
+      maxItems,
+      title,
+    });
+
+    if (this._lastBaseKey === baseKey && this._lastDeparturesRef === departures) {
+      return;
+    }
+
+    const departuresKey = JSON.stringify(departures);
+    if (this._lastBaseKey === baseKey && this._lastDeparturesKey === departuresKey) {
+      this._lastDeparturesRef = departures;
+      return;
+    }
+
+    this._lastBaseKey = baseKey;
+    this._lastDeparturesKey = departuresKey;
+    this._lastDeparturesRef = departures;
     this._render();
   }
 
@@ -33,6 +61,10 @@ class MavDepartureCard extends HTMLElement {
       throw new Error("MÁV Departure Card: 'entity' is required in card config.");
     }
     this._config = config;
+    this._lastBaseKey = undefined;
+    this._lastDeparturesKey = undefined;
+    this._lastDeparturesRef = undefined;
+    if (this._hass) this._render();
   }
 
   getCardSize() {
