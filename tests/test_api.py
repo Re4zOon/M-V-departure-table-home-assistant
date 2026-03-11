@@ -411,7 +411,7 @@ def test_validate_station_codes_allows_no_offers(monkeypatch):
             pass
 
         async def get_departures(self, _start, _end):
-            raise MavApiError("No offers found")
+            raise MavApiError("MÁV API returned error: No offers found")
 
     monkeypatch.setattr(
         "custom_components.mav_departure.config_flow.async_get_clientsession",
