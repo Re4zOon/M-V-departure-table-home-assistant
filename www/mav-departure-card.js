@@ -224,13 +224,17 @@ class MavDepartureCard extends HTMLElement {
   }
 }
 
-customElements.define("mav-departure-card", MavDepartureCard);
+if (!customElements.get("mav-departure-card")) {
+  customElements.define("mav-departure-card", MavDepartureCard);
+}
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "mav-departure-card",
-  name: "MÁV Departure Table",
-  description:
-    "Displays real-time MÁV (Hungarian Railways) departure times with delay information.",
-  preview: false,
-});
+if (!window.customCards.some((card) => card?.type === "mav-departure-card")) {
+  window.customCards.push({
+    type: "mav-departure-card",
+    name: "MÁV Departure Table",
+    description:
+      "Displays real-time MÁV (Hungarian Railways) departure times with delay information.",
+    preview: false,
+  });
+}

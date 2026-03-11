@@ -73,7 +73,6 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
             f"{entry.data[CONF_START_STATION_CODE]}"
             f"_{entry.data[CONF_END_STATION_CODE]}"
         )
-        self._attr_extra_state_attributes: dict[str, Any] = {}
 
     # ------------------------------------------------------------------
     # SensorEntity overrides
