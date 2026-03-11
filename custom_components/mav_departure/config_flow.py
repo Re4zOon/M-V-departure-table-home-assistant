@@ -50,7 +50,8 @@ async def _validate_station_codes(
             return None
         _LOGGER.debug("Station code validation failed: %s", err)
         return "cannot_connect"
-    except Exception:  # noqa: BLE001
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.exception("Unexpected error during station code validation: %s", err)
         return "unknown"
     return None
 
