@@ -30,6 +30,7 @@ ha.__path__ = []  # mark as package
 
 # homeassistant.util
 ha_util = _register("homeassistant.util")
+ha_util.__path__ = []
 
 # homeassistant.util.dt
 ha_dt = _register("homeassistant.util.dt")
@@ -45,11 +46,19 @@ def _stub_parse_datetime(value: str):
 ha_dt.parse_datetime = _stub_parse_datetime
 ha_dt.now = lambda: datetime.now(tz=TZ_CET)
 ha_dt.as_local = lambda dt: dt.astimezone(TZ_CET)
+ha_util.dt = ha_dt
 
 # homeassistant.config_entries
 ha_ce = _register("homeassistant.config_entries")
+
+
+class _FakeConfigFlow:
+    def __init_subclass__(cls, **kwargs):
+        return super().__init_subclass__()
+
+
 ha_ce.ConfigEntry = object
-ha_ce.ConfigFlow = object
+ha_ce.ConfigFlow = _FakeConfigFlow
 ha_ce.FlowResult = dict
 
 # homeassistant.core
@@ -119,6 +128,7 @@ from custom_components.mav_departure.api import (  # noqa: E402
     _extract_train_info,
     _parse_datetime,
 )
+from custom_components.mav_departure.config_flow import _validate_station_codes  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # _parse_datetime
@@ -393,3 +403,46 @@ def test_get_departures_raises_mavapierror_on_invalid_json():
             await client.get_departures("005501016", "005500709")
 
     asyncio.run(_run_invalid_json_scenario())
+
+
+def test_validate_station_codes_allows_no_offers(monkeypatch):
+    class _RaisingNoOffersClient:
+        def __init__(self, _session):
+            pass
+
+        async def get_departures(self, _start, _end):
+            raise MavApiError("No offers found")
+
+    monkeypatch.setattr(
+        "custom_components.mav_departure.config_flow.async_get_clientsession",
+        lambda _hass: object(),
+    )
+    monkeypatch.setattr(
+        "custom_components.mav_departure.config_flow.MavApiClient",
+        _RaisingNoOffersClient,
+    )
+
+    assert asyncio.run(_validate_station_codes(object(), "005501016", "005500709")) is None
+
+
+def test_validate_station_codes_still_returns_cannot_connect(monkeypatch):
+    class _RaisingConnectionClient:
+        def __init__(self, _session):
+            pass
+
+        async def get_departures(self, _start, _end):
+            raise MavApiError("gateway timeout")
+
+    monkeypatch.setattr(
+        "custom_components.mav_departure.config_flow.async_get_clientsession",
+        lambda _hass: object(),
+    )
+    monkeypatch.setattr(
+        "custom_components.mav_departure.config_flow.MavApiClient",
+        _RaisingConnectionClient,
+    )
+
+    assert (
+        asyncio.run(_validate_station_codes(object(), "005501016", "005500709"))
+        == "cannot_connect"
+    )
