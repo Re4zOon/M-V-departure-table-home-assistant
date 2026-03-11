@@ -155,11 +155,22 @@ class TestParseDatetime:
 
 
 class TestExtractTrainInfo:
-    def _make_route(self, jel: str, kind: str) -> dict:
+    # NOTE: MÁV API uses a misspelled key "destionationStation".
+    _DEST_KEY = "destionationStation"
+
+    def _make_route(
+        self,
+        jel: str,
+        kind: str,
+        origin: str = "Budapest-Keleti",
+        destination: str = "Győr",
+    ) -> dict:
         return {
             "details": {
                 "routes": [
                     {
+                        "startStation": {"name": origin},
+                        self._DEST_KEY: {"name": destination},
                         "trainDetails": {
                             "viszonylatiJel": {"jel": jel},
                             "trainKind": {"name": kind},
@@ -171,19 +182,25 @@ class TestExtractTrainInfo:
 
     def test_extracts_sign_and_type(self):
         route = self._make_route("IC 703", "InterCity")
-        sign, kind = _extract_train_info(route)
+        sign, kind, origin, destination = _extract_train_info(route)
         assert sign == "IC 703"
         assert kind == "InterCity"
+        assert origin == "Budapest-Keleti"
+        assert destination == "Győr"
 
     def test_returns_empty_strings_when_details_missing(self):
-        sign, kind = _extract_train_info({})
+        sign, kind, origin, destination = _extract_train_info({})
         assert sign == ""
         assert kind == ""
+        assert origin == ""
+        assert destination == ""
 
     def test_returns_empty_strings_when_routes_empty(self):
-        sign, kind = _extract_train_info({"details": {"routes": []}})
+        sign, kind, origin, destination = _extract_train_info({"details": {"routes": []}})
         assert sign == ""
         assert kind == ""
+        assert origin == ""
+        assert destination == ""
 
     def test_tolerates_none_values(self):
         route = {
@@ -198,9 +215,34 @@ class TestExtractTrainInfo:
                 ]
             }
         }
-        sign, kind = _extract_train_info(route)
+        sign, kind, origin, destination = _extract_train_info(route)
         assert sign == ""
         assert kind == ""
+        assert origin == ""
+        assert destination == ""
+
+    def test_falls_back_to_first_last_leg_stations_without_sign(self):
+        route = {
+            "details": {
+                "routes": [
+                    {
+                        "startStation": {"name": "Budapest-Keleti"},
+                        self._DEST_KEY: {"name": "Győr"},
+                        "trainDetails": {"viszonylatiJel": None, "trainKind": None},
+                    },
+                    {
+                        "startStation": {"name": "Győr"},
+                        self._DEST_KEY: {"name": "Hegyeshalom"},
+                        "trainDetails": {"viszonylatiJel": None, "trainKind": None},
+                    },
+                ]
+            }
+        }
+        sign, kind, origin, destination = _extract_train_info(route)
+        assert sign == ""
+        assert kind == ""
+        assert origin == "Budapest-Keleti"
+        assert destination == "Hegyeshalom"
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +251,9 @@ class TestExtractTrainInfo:
 
 
 class TestParseRoute:
+    # NOTE: MÁV API uses a misspelled key "destionationStation".
+    _DEST_KEY = "destionationStation"
+
     def setup_method(self):
         self.client = MavApiClient(session=MagicMock())
 
@@ -219,6 +264,8 @@ class TestParseRoute:
         travel_time: int = 60,
         jel: str = "IC 703",
         kind: str = "InterCity",
+        origin: str = "Budapest-Keleti",
+        destination: str = "Győr",
     ) -> dict:
         return {
             "departure": {
@@ -229,6 +276,8 @@ class TestParseRoute:
             "details": {
                 "routes": [
                     {
+                        "startStation": {"name": origin},
+                        self._DEST_KEY: {"name": destination},
                         "trainDetails": {
                             "viszonylatiJel": {"jel": jel},
                             "trainKind": {"name": kind},
@@ -246,6 +295,8 @@ class TestParseRoute:
         assert dep.delay_minutes == 0
         assert dep.train_sign == "IC 703"
         assert dep.train_type == "InterCity"
+        assert dep.train_origin == "Budapest-Keleti"
+        assert dep.train_destination == "Győr"
         assert dep.travel_time_minutes == 60
 
     def test_delayed_departure(self):

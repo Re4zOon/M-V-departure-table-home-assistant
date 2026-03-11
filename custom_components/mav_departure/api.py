@@ -37,6 +37,8 @@ class Departure:
     has_delay: bool
     train_sign: str
     train_type: str
+    train_origin: str
+    train_destination: str
     travel_time_minutes: int
 
 
@@ -154,7 +156,7 @@ class MavApiClient:
         )
 
         travel_time = int(route.get("travelTimeMin") or 0)
-        train_sign, train_type = _extract_train_info(route)
+        train_sign, train_type, train_origin, train_destination = _extract_train_info(route)
 
         return Departure(
             scheduled_departure=scheduled,
@@ -163,6 +165,8 @@ class MavApiClient:
             has_delay=has_delay,
             train_sign=train_sign,
             train_type=train_type,
+            train_origin=train_origin,
+            train_destination=train_destination,
             travel_time_minutes=travel_time,
         )
 
@@ -189,15 +193,48 @@ def _parse_datetime(value: str) -> datetime | None:
         return None
 
 
-def _extract_train_info(route: dict[str, Any]) -> tuple[str, str]:
-    """Safely extract train sign and type from a route object."""
+def _extract_train_info(route: dict[str, Any]) -> tuple[str, str, str, str]:
+    """Safely extract train sign/type and per-train origin/destination."""
     try:
         detail_routes: list = (route.get("details") or {}).get("routes") or []
         if not detail_routes:
-            return ("", "")
-        train_details: dict = detail_routes[0].get("trainDetails") or {}
-        sign: str = (train_details.get("viszonylatiJel") or {}).get("jel", "")
-        kind: str = (train_details.get("trainKind") or {}).get("name", "")
-        return (sign, kind)
+            return ("", "", "", "")
+
+        fallback_origin = ""
+        fallback_destination = ""
+        for detail_route in detail_routes:
+            start_station = _extract_station_name(detail_route.get("startStation"))
+            destination_obj = (
+                detail_route.get("destionationStation")
+                if "destionationStation" in detail_route
+                else detail_route.get("destinationStation")
+            )
+            destination_station = _extract_station_name(
+                destination_obj
+            )
+            if not fallback_origin and start_station:
+                fallback_origin = start_station
+            if destination_station:
+                fallback_destination = destination_station
+
+            train_details: dict = detail_route.get("trainDetails") or {}
+            sign: str = (train_details.get("viszonylatiJel") or {}).get("jel", "")
+            kind: str = (train_details.get("trainKind") or {}).get("name", "")
+            if sign:
+                return (
+                    sign,
+                    kind,
+                    start_station or fallback_origin,
+                    destination_station or fallback_destination,
+                )
+
+        return ("", "", fallback_origin, fallback_destination)
     except (AttributeError, IndexError, TypeError):
-        return ("", "")
+        return ("", "", "", "")
+
+
+def _extract_station_name(station: Any) -> str:
+    """Extract a station name from MÁV station object shape."""
+    if isinstance(station, dict):
+        return station.get("name") or ""
+    return ""

@@ -20,6 +20,8 @@ from .const import (
     ATTR_HAS_DELAY,
     ATTR_SCHEDULED,
     ATTR_START_STATION_CODE,
+    ATTR_TRAIN_DESTINATION,
+    ATTR_TRAIN_ORIGIN,
     ATTR_TRAIN_SIGN,
     ATTR_TRAIN_TYPE,
     ATTR_TRAVEL_TIME_MINUTES,
@@ -108,6 +110,8 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
                     ATTR_HAS_DELAY: dep.has_delay,
                     ATTR_TRAIN_SIGN: dep.train_sign,
                     ATTR_TRAIN_TYPE: dep.train_type,
+                    ATTR_TRAIN_ORIGIN: dep.train_origin,
+                    ATTR_TRAIN_DESTINATION: dep.train_destination,
                     ATTR_TRAVEL_TIME_MINUTES: dep.travel_time_minutes,
                 }
             )

@@ -21,13 +21,11 @@ A [HACS](https://hacs.xyz/) custom integration that pulls **real-time departure 
 
 | | |
 |---|---|
-| **Route** | 005501016 → 005500709 |
-
-| Train | Scheduled | Expected | Delay |
-|-------|-----------|----------|-------|
-| IC 703 | 07:30 | 07:30 | On time |
-| S50 221 | 07:45 | 07:52 | +7 min |
-| IC 811 | 08:00 | 08:00 | On time |
+| Train | From | To | Scheduled | Expected | Delay |
+|-------|------|----|-----------|----------|-------|
+| IC 924 | Budapest-Keleti | Győr | 07:30 | 07:30 | On time |
+| RJX 64 | Budapest-Keleti | München Hbf | 07:45 | 07:52 | +7 min |
+| IC 811 | Budapest-Keleti | Sopron | 08:00 | 08:00 | On time |
 
 ---
 
@@ -139,6 +137,8 @@ Each item in `departures` contains:
 | `has_delay` | bool | `true` if the train is currently delayed |
 | `train_sign` | string | Train identifier shown on boards (e.g. `IC 703`) |
 | `train_type` | string | Service type (e.g. `InterCity`) |
+| `train_origin` | string | Origin station for that train service |
+| `train_destination` | string | Final destination station for that train service |
 | `travel_time_minutes` | int | Total travel time in minutes |
 
 ### Example automation

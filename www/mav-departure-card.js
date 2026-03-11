@@ -67,17 +67,11 @@ class MavDepartureCard extends HTMLElement {
     }
 
     const departures = (stateObj.attributes.departures || []).slice(0, maxItems);
-    const originCode = stateObj.attributes.start_station_code || "";
-    const destinationCode = stateObj.attributes.end_station_code || "";
-    const routeInfo =
-      originCode || destinationCode
-        ? `<div class="route-info">${this._escapeHtml(originCode)} → ${this._escapeHtml(destinationCode)}</div>`
-        : "";
 
     if (departures.length === 0) {
       this.shadowRoot.innerHTML = this._wrapCard(
         title,
-        `${routeInfo}<p class="no-data">No upcoming departures found.</p>`
+        `<p class="no-data">No upcoming departures found.</p>`
       );
       return;
     }
@@ -86,10 +80,12 @@ class MavDepartureCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = this._wrapCard(
       title,
-      `${routeInfo}<table>
+      `<table>
         <thead>
           <tr>
             <th>Train</th>
+            <th>From</th>
+            <th>To</th>
             <th>Scheduled</th>
             <th>Expected</th>
             <th>Delay</th>
@@ -108,9 +104,13 @@ class MavDepartureCard extends HTMLElement {
       ? this._escapeHtml(`+${dep.delay_minutes} min`)
       : "On time";
     const sign = this._escapeHtml(dep.train_sign || "—");
+    const origin = this._escapeHtml(dep.train_origin || "—");
+    const destination = this._escapeHtml(dep.train_destination || "—");
 
     return `<tr class="${dep.has_delay ? "row-delayed" : ""}">
       <td class="train-sign">${sign}</td>
+      <td>${origin}</td>
+      <td>${destination}</td>
       <td>${scheduled}</td>
       <td class="${dep.has_delay ? "expected-delayed" : ""}">${expected}</td>
       <td class="delay ${delayClass}">${delayLabel}</td>
@@ -183,11 +183,6 @@ class MavDepartureCard extends HTMLElement {
         }
         .delayed {
           color: var(--error-color, #e53935);
-        }
-        .route-info {
-          padding: 0 16px 6px;
-          font-size: 0.85em;
-          color: var(--secondary-text-color);
         }
         .warning, .no-data {
           padding: 12px 16px;
