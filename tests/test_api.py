@@ -509,3 +509,25 @@ def test_sensor_native_value_is_datetime_timestamp():
     assert sensor.native_value is not None
     assert isinstance(sensor.native_value, datetime)
     assert sensor._attr_device_class == "timestamp"
+
+
+# ---------------------------------------------------------------------------
+# async_setup — Lovelace card registration
+# ---------------------------------------------------------------------------
+
+
+def test_async_setup_registers_card_resource():
+    """Verify async_setup registers the Lovelace JS card as a frontend resource."""
+    from custom_components.mav_departure import async_setup, CARD_URL
+
+    mock_hass = MagicMock()
+    mock_hass.data = {}
+
+    result = asyncio.run(async_setup(mock_hass, {}))
+
+    assert result is True
+    mock_hass.http.register_static_path.assert_called_once()
+    args = mock_hass.http.register_static_path.call_args
+    assert args[0][0] == CARD_URL
+    assert "mav-departure-card.js" in args[0][1]
+    ha_frontend.add_extra_js_url.assert_called_with(mock_hass, CARD_URL)
