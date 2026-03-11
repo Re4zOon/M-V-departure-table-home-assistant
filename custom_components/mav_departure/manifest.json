@@ -6,8 +6,7 @@
   "issue_tracker": "https://github.com/Re4zOon/M-V-departure-table-home-assistant/issues",
   "codeowners": ["@Re4zOon"],
   "requirements": [],
-  "dependencies": [],
-  "after_dependencies": ["frontend"],
+  "dependencies": ["frontend", "http"],
   "iot_class": "cloud_polling",
   "config_flow": true
 }
