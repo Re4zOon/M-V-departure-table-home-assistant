@@ -87,16 +87,7 @@ The integration will immediately validate your station codes against the live AP
 
 ## Lovelace card
 
-### Install the card resource
-
-Card resource installation is currently **manual**:
-
-1. Copy `www/mav-departure-card.js` to `<config>/www/mav-departure-card.js`.
-2. Go to **Settings → Dashboards → three-dot menu → Resources**.
-3. Add a new resource:
-   - URL: `/local/mav-departure-card.js`
-   - Type: **JavaScript module**
-4. Reload the page (hard refresh).
+The Lovelace card is **automatically registered** when the integration is loaded — no manual resource setup is needed.
 
 ### Add the card to your dashboard
 

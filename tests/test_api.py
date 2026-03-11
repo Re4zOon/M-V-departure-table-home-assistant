@@ -69,6 +69,10 @@ ha_core.HomeAssistant = object
 ha_components = _register("homeassistant.components")
 ha_components.__path__ = []
 
+# homeassistant.components.frontend
+ha_frontend = _register("homeassistant.components.frontend")
+ha_frontend.add_extra_js_url = MagicMock()
+
 # homeassistant.components.sensor
 ha_sensor = _register("homeassistant.components.sensor")
 ha_sensor.SensorEntity = object
