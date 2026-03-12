@@ -400,7 +400,7 @@ class TestParseRoute:
 
     def test_parse_response_returns_empty_for_no_offers_case_insensitive(self):
         result = self.client._parse_response(
-            {"errorMessage": "MÁV API returned error: NO OFFERS FOUND"}
+            {"errorMessage": "NO OFFERS FOUND"}
         )
         assert result == []
 
@@ -584,8 +584,8 @@ def test_async_setup_registers_card_resource():
     assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True
 
 
-def test_async_setup_entry_registers_card_when_async_setup_skipped():
-    """Verify async_setup_entry registers the card if async_setup could not."""
+def test_register_card_is_idempotent():
+    """Verify _register_card registers the card and is idempotent on repeat calls."""
     from custom_components.mav_departure import _register_card, CARD_URL
 
     ha_frontend.add_extra_js_url.reset_mock()
