@@ -525,6 +525,27 @@ def test_sensor_native_value_is_datetime_timestamp():
     assert sensor._attr_device_class == "timestamp"
 
 
+def test_sensor_name_produces_expected_entity_id():
+    """Entity name must slugify to 'mav_{start}_{end}' for correct entity_id."""
+    coordinator = types.SimpleNamespace(data=[])
+    entry = types.SimpleNamespace(
+        data={
+            CONF_START_STATION_CODE: "005510157",
+            CONF_END_STATION_CODE: "005500709",
+        }
+    )
+
+    sensor = MavDepartureSensor(coordinator, entry)
+
+    # The name should contain both station codes so that Home Assistant
+    # generates an entity_id like sensor.mav_005510157_005500709.
+    assert "005510157" in sensor._attr_name
+    assert "005500709" in sensor._attr_name
+    assert sensor._attr_unique_id == "005510157_005500709"
+    # has_entity_name must NOT be True (no device_info is provided)
+    assert not getattr(sensor, "_attr_has_entity_name", False)
+
+
 # ---------------------------------------------------------------------------
 # async_setup — Lovelace card registration
 # ---------------------------------------------------------------------------

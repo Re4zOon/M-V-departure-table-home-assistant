@@ -67,8 +67,6 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
 
     _attr_icon = "mdi:train"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_has_entity_name = True
-    _attr_name = "Next departure"
 
     def __init__(
         self,
@@ -77,10 +75,10 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
-        self._attr_unique_id = (
-            f"{entry.data[CONF_START_STATION_CODE]}"
-            f"_{entry.data[CONF_END_STATION_CODE]}"
-        )
+        start = entry.data[CONF_START_STATION_CODE]
+        end = entry.data[CONF_END_STATION_CODE]
+        self._attr_unique_id = f"{start}_{end}"
+        self._attr_name = f"MÁV {start} \u2192 {end}"
 
     # ------------------------------------------------------------------
     # SensorEntity overrides
