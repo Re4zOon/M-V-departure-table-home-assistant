@@ -118,6 +118,9 @@ class _FakeCoordinator:
     def __class_getitem__(cls, item):
         return cls
 
+    def __init__(self, *args, **kwargs):
+        pass
+
 
 class _FakeCoordinatorEntity:
     def __class_getitem__(cls, item):
@@ -155,6 +158,7 @@ from custom_components.mav_departure.api import (  # noqa: E402
     _parse_datetime,
 )
 from custom_components.mav_departure.const import (  # noqa: E402
+    ATTR_LAST_ERROR,
     CONF_END_STATION_CODE,
     CONF_START_STATION_CODE,
 )
@@ -521,7 +525,7 @@ def test_sensor_native_value_is_datetime_timestamp():
         train_destination="Győr",
         travel_time_minutes=60,
     )
-    coordinator = types.SimpleNamespace(data=[dep])
+    coordinator = types.SimpleNamespace(data=[dep], last_error=None)
     entry = types.SimpleNamespace(
         data={
             CONF_START_STATION_CODE: "005501016",
@@ -537,7 +541,7 @@ def test_sensor_native_value_is_datetime_timestamp():
 
 def test_sensor_name_produces_expected_entity_id():
     """Entity name must slugify to 'mav_{start}_{end}' for correct entity_id."""
-    coordinator = types.SimpleNamespace(data=[])
+    coordinator = types.SimpleNamespace(data=[], last_error=None)
     entry = types.SimpleNamespace(
         data={
             CONF_START_STATION_CODE: "005510157",
@@ -610,3 +614,84 @@ def test_register_card_is_idempotent():
 
     mock_hass.http.async_register_static_paths.assert_not_called()
     ha_frontend.add_extra_js_url.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Coordinator & sensor — last_error surfacing
+# ---------------------------------------------------------------------------
+
+
+def test_sensor_exposes_last_error_none_on_success():
+    """extra_state_attributes includes last_error=None when no error."""
+    coordinator = types.SimpleNamespace(data=[], last_error=None)
+    entry = types.SimpleNamespace(
+        data={
+            CONF_START_STATION_CODE: "005501016",
+            CONF_END_STATION_CODE: "005500709",
+        }
+    )
+    sensor = MavDepartureSensor(coordinator, entry)
+    attrs = sensor.extra_state_attributes
+    assert ATTR_LAST_ERROR in attrs
+    assert attrs[ATTR_LAST_ERROR] is None
+
+
+def test_sensor_exposes_last_error_message():
+    """extra_state_attributes includes last_error with the error message."""
+    coordinator = types.SimpleNamespace(
+        data=[], last_error="MÁV API returned HTTP 503: Service Unavailable"
+    )
+    entry = types.SimpleNamespace(
+        data={
+            CONF_START_STATION_CODE: "005501016",
+            CONF_END_STATION_CODE: "005500709",
+        }
+    )
+    sensor = MavDepartureSensor(coordinator, entry)
+    attrs = sensor.extra_state_attributes
+    assert attrs[ATTR_LAST_ERROR] == "MÁV API returned HTTP 503: Service Unavailable"
+
+
+def test_coordinator_stores_last_error_on_failure():
+    """Coordinator.last_error is set when the API raises MavApiError."""
+    from custom_components.mav_departure.coordinator import MavDepartureCoordinator
+
+    mock_client = MagicMock()
+    mock_client.get_departures = AsyncMock(
+        side_effect=MavApiError("gateway timeout")
+    )
+
+    coordinator = MavDepartureCoordinator(
+        hass=MagicMock(),
+        client=mock_client,
+        start_station_code="005501016",
+        end_station_code="005500709",
+    )
+    assert coordinator.last_error is None
+
+    with pytest.raises(Exception):
+        asyncio.run(coordinator._async_update_data())
+
+    assert coordinator.last_error == "gateway timeout"
+
+
+def test_coordinator_clears_last_error_on_success():
+    """Coordinator.last_error is cleared after a successful update."""
+    from custom_components.mav_departure.coordinator import MavDepartureCoordinator
+
+    mock_client = MagicMock()
+    mock_client.get_departures = AsyncMock(return_value=[])
+
+    coordinator = MavDepartureCoordinator(
+        hass=MagicMock(),
+        client=mock_client,
+        start_station_code="005501016",
+        end_station_code="005500709",
+    )
+    # Simulate a prior error
+    coordinator.last_error = "previous error"
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == []
+    assert coordinator.last_error is None

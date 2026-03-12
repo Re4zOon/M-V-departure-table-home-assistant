@@ -27,11 +27,13 @@ class MavDepartureCard extends HTMLElement {
     const maxItems = this._config.max_departures || 10;
     const title = this._config.title || "";
     const departures = stateObj?.attributes?.departures || [];
+    const lastError = stateObj?.attributes?.last_error || null;
     const baseKey = JSON.stringify({
       entity: this._config.entity,
       missing: !stateObj,
       lastUpdated: stateObj?.last_updated || null,
       state: stateObj?.state || null,
+      lastError,
       maxItems,
       title,
     });
@@ -94,13 +96,24 @@ class MavDepartureCard extends HTMLElement {
       return;
     }
 
+    if (stateObj.state === "unavailable") {
+      const lastError = stateObj.attributes?.last_error;
+      const errorDetail = lastError || "Unable to reach the MÁV API.";
+      this.shadowRoot.innerHTML = this._wrapCard(
+        title,
+        this._renderErrorBanner(errorDetail)
+      );
+      return;
+    }
+
+    const lastError = stateObj.attributes?.last_error;
     const departures = (stateObj.attributes.departures || []).slice(0, maxItems);
 
     if (departures.length === 0) {
-      this.shadowRoot.innerHTML = this._wrapCard(
-        title,
-        `<p class="no-data">No upcoming departures found.</p>`
-      );
+      const noDataMsg = lastError
+        ? this._renderErrorBanner(lastError)
+        : `<p class="no-data">No upcoming departures found.</p>`;
+      this.shadowRoot.innerHTML = this._wrapCard(title, noDataMsg);
       return;
     }
 
@@ -220,6 +233,21 @@ class MavDepartureCard extends HTMLElement {
         .warning {
           color: var(--error-color, #e53935);
         }
+        .error-banner {
+          padding: 12px 16px;
+          margin: 0 8px 8px;
+          background: rgba(229, 57, 53, 0.08);
+          border-left: 3px solid var(--error-color, #e53935);
+          border-radius: 4px;
+          color: var(--primary-text-color);
+          font-size: 0.9em;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .error-banner strong {
+          color: var(--error-color, #e53935);
+        }
       </style>
       <ha-card>
         <div class="card-header">
@@ -249,6 +277,13 @@ class MavDepartureCard extends HTMLElement {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  _renderErrorBanner(message) {
+    return `<div class="error-banner">
+      <strong>⚠ Error</strong>
+      <span>${this._escapeHtml(message)}</span>
+    </div>`;
   }
 }
 

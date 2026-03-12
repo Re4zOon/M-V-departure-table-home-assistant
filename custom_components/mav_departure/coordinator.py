@@ -28,6 +28,7 @@ class MavDepartureCoordinator(DataUpdateCoordinator[list[Departure]]):
         self.start_station_code = start_station_code
         self.end_station_code = end_station_code
         self._client = client
+        self.last_error: str | None = None
 
         super().__init__(
             hass,
@@ -39,9 +40,12 @@ class MavDepartureCoordinator(DataUpdateCoordinator[list[Departure]]):
     async def _async_update_data(self) -> list[Departure]:
         """Fetch fresh departure data from the MÁV API."""
         try:
-            return await self._client.get_departures(
+            data = await self._client.get_departures(
                 self.start_station_code,
                 self.end_station_code,
             )
         except MavApiError as err:
+            self.last_error = str(err)
             raise UpdateFailed(f"Error communicating with MÁV API: {err}") from err
+        self.last_error = None
+        return data
