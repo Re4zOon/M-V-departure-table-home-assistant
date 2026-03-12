@@ -27,7 +27,7 @@ class MavDepartureCard extends HTMLElement {
     const maxItems = this._config.max_departures || 10;
     const title = this._config.title || "";
     const departures = stateObj?.attributes?.departures || [];
-    const lastError = stateObj?.attributes?.last_error || null;
+    const lastError = stateObj?.attributes?.last_error ?? null;
     const baseKey = JSON.stringify({
       entity: this._config.entity,
       missing: !stateObj,
@@ -118,10 +118,11 @@ class MavDepartureCard extends HTMLElement {
     }
 
     const rows = departures.map((d) => this._renderRow(d)).join("");
+    const errorHtml = lastError ? this._renderErrorBanner(lastError) : "";
 
     this.shadowRoot.innerHTML = this._wrapCard(
       title,
-      `<table>
+      `${errorHtml}<table>
         <thead>
           <tr>
             <th>Train</th>
@@ -280,8 +281,8 @@ class MavDepartureCard extends HTMLElement {
   }
 
   _renderErrorBanner(message) {
-    return `<div class="error-banner">
-      <strong>⚠ Error</strong>
+    return `<div class="error-banner" role="alert" aria-live="assertive">
+      <strong><span aria-hidden="true">⚠</span> Error</strong>
       <span>${this._escapeHtml(message)}</span>
     </div>`;
   }
