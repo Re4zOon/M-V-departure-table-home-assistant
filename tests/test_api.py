@@ -130,8 +130,12 @@ class _FakeCoordinatorEntity:
         self.coordinator = coordinator
 
 
+class _FakeUpdateFailed(Exception):
+    pass
+
+
 ha_uc.DataUpdateCoordinator = _FakeCoordinator
-ha_uc.UpdateFailed = Exception
+ha_uc.UpdateFailed = _FakeUpdateFailed
 ha_uc.CoordinatorEntity = _FakeCoordinatorEntity
 
 # voluptuous (used by config_flow)
@@ -412,6 +416,10 @@ class TestParseRoute:
         with pytest.raises(MavApiError, match="Service unavailable"):
             self.client._parse_response({"errorMessage": "Service unavailable"})
 
+    def test_parse_response_raises_for_non_string_error_message(self):
+        with pytest.raises(MavApiError, match="42"):
+            self.client._parse_response({"errorMessage": 42})
+
     def test_parse_response_raises_when_route_missing(self):
         with pytest.raises(MavApiError, match="missing route"):
             self.client._parse_response({})
@@ -669,7 +677,7 @@ def test_coordinator_stores_last_error_on_failure():
     )
     assert coordinator.last_error is None
 
-    with pytest.raises(Exception):
+    with pytest.raises(_FakeUpdateFailed, match="Error communicating with MÁV API"):
         asyncio.run(coordinator._async_update_data())
 
     assert coordinator.last_error == "gateway timeout"
