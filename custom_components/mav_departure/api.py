@@ -118,6 +118,8 @@ class MavApiClient:
     def _parse_response(self, data: dict[str, Any]) -> list[Departure]:
         error_message = data.get("errorMessage")
         if error_message:
+            if "no offers found" in error_message.lower():
+                return []
             raise MavApiError(f"MÁV API returned error: {error_message}")
 
         routes = data.get("route")

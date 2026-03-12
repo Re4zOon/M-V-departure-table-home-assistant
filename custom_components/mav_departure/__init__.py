@@ -26,29 +26,37 @@ CARD_JS = "mav-departure-card.js"
 CARD_URL = f"/{DOMAIN}/{CARD_JS}"
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Register the Lovelace card as a static resource (best-effort)."""
+async def _register_card(hass: HomeAssistant) -> None:
+    """Register the Lovelace JS card as a frontend resource (idempotent)."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     internal = domain_data.setdefault("_internal", {})
-    if not internal.get("card_registered", False):
-        try:
-            from homeassistant.components.frontend import add_extra_js_url
-        except ImportError:
-            _LOGGER.warning("Frontend component not available; skipping card registration")
-            return True
-        if not hasattr(hass, "http") or hass.http is None:
-            _LOGGER.warning("HTTP server not available; skipping card registration")
-            return True
-        await hass.http.async_register_static_paths(
-            [StaticPathConfig(CARD_URL, str(Path(__file__).parent / CARD_JS), True)]
-        )
-        add_extra_js_url(hass, CARD_URL)
-        internal["card_registered"] = True
+    if internal.get("card_registered", False):
+        return
+    try:
+        from homeassistant.components.frontend import add_extra_js_url
+    except ImportError:
+        _LOGGER.warning("Frontend component not available; skipping card registration")
+        return
+    if not hasattr(hass, "http") or hass.http is None:
+        _LOGGER.warning("HTTP server not available; skipping card registration")
+        return
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(CARD_URL, str(Path(__file__).parent / CARD_JS), True)]
+    )
+    add_extra_js_url(hass, CARD_URL)
+    internal["card_registered"] = True
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register the Lovelace card as a static resource (best-effort)."""
+    await _register_card(hass)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MÁV Departure Table from a config entry."""
+    await _register_card(hass)
+
     session = async_get_clientsession(hass)
     client = MavApiClient(session)
 

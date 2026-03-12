@@ -394,9 +394,19 @@ class TestParseRoute:
         assert len(result) == 1
         assert result[0].train_sign == "IC 703"
 
-    def test_parse_response_raises_for_api_error_message(self):
-        with pytest.raises(MavApiError, match="No offers found"):
-            self.client._parse_response({"errorMessage": "No offers found"})
+    def test_parse_response_returns_empty_for_no_offers(self):
+        result = self.client._parse_response({"errorMessage": "No offers found"})
+        assert result == []
+
+    def test_parse_response_returns_empty_for_no_offers_case_insensitive(self):
+        result = self.client._parse_response(
+            {"errorMessage": "MÁV API returned error: NO OFFERS FOUND"}
+        )
+        assert result == []
+
+    def test_parse_response_raises_for_other_api_error_message(self):
+        with pytest.raises(MavApiError, match="Service unavailable"):
+            self.client._parse_response({"errorMessage": "Service unavailable"})
 
     def test_parse_response_raises_when_route_missing(self):
         with pytest.raises(MavApiError, match="missing route"):
@@ -572,3 +582,31 @@ def test_async_setup_registers_card_resource():
     assert "mav-departure-card.js" in static_path_config.path
     ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)
     assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True
+
+
+def test_async_setup_entry_registers_card_when_async_setup_skipped():
+    """Verify async_setup_entry registers the card if async_setup could not."""
+    from custom_components.mav_departure import _register_card, CARD_URL
+
+    ha_frontend.add_extra_js_url.reset_mock()
+
+    mock_hass = MagicMock()
+    mock_hass.data = {}
+    # Simulate async_setup having been skipped (http was None at that time)
+    mock_hass.http = MagicMock()
+    mock_hass.http.async_register_static_paths = AsyncMock()
+
+    asyncio.run(_register_card(mock_hass))
+
+    mock_hass.http.async_register_static_paths.assert_called_once()
+    ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)
+    assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True
+
+    # Calling again should be a no-op (idempotent)
+    ha_frontend.add_extra_js_url.reset_mock()
+    mock_hass.http.async_register_static_paths.reset_mock()
+
+    asyncio.run(_register_card(mock_hass))
+
+    mock_hass.http.async_register_static_paths.assert_not_called()
+    ha_frontend.add_extra_js_url.assert_not_called()
