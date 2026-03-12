@@ -18,6 +18,7 @@ from .const import (
     ATTR_END_STATION_CODE,
     ATTR_EXPECTED,
     ATTR_HAS_DELAY,
+    ATTR_LAST_ERROR,
     ATTR_SCHEDULED,
     ATTR_START_STATION_CODE,
     ATTR_TRAIN_DESTINATION,
@@ -122,4 +123,5 @@ class MavDepartureSensor(CoordinatorEntity[MavDepartureCoordinator], SensorEntit
             ATTR_DEPARTURES: departure_list,
             ATTR_START_STATION_CODE: self._entry.data[CONF_START_STATION_CODE],
             ATTR_END_STATION_CODE: self._entry.data[CONF_END_STATION_CODE],
+            ATTR_LAST_ERROR: self.coordinator.last_error,
         }

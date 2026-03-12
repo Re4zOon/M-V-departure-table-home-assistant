@@ -118,6 +118,9 @@ class _FakeCoordinator:
     def __class_getitem__(cls, item):
         return cls
 
+    def __init__(self, *args, **kwargs):
+        pass
+
 
 class _FakeCoordinatorEntity:
     def __class_getitem__(cls, item):
@@ -127,8 +130,12 @@ class _FakeCoordinatorEntity:
         self.coordinator = coordinator
 
 
+class _FakeUpdateFailed(Exception):
+    pass
+
+
 ha_uc.DataUpdateCoordinator = _FakeCoordinator
-ha_uc.UpdateFailed = Exception
+ha_uc.UpdateFailed = _FakeUpdateFailed
 ha_uc.CoordinatorEntity = _FakeCoordinatorEntity
 
 # voluptuous (used by config_flow)
@@ -155,6 +162,7 @@ from custom_components.mav_departure.api import (  # noqa: E402
     _parse_datetime,
 )
 from custom_components.mav_departure.const import (  # noqa: E402
+    ATTR_LAST_ERROR,
     CONF_END_STATION_CODE,
     CONF_START_STATION_CODE,
 )
@@ -394,9 +402,23 @@ class TestParseRoute:
         assert len(result) == 1
         assert result[0].train_sign == "IC 703"
 
-    def test_parse_response_raises_for_api_error_message(self):
-        with pytest.raises(MavApiError, match="No offers found"):
-            self.client._parse_response({"errorMessage": "No offers found"})
+    def test_parse_response_returns_empty_for_no_offers(self):
+        result = self.client._parse_response({"errorMessage": "No offers found"})
+        assert result == []
+
+    def test_parse_response_returns_empty_for_no_offers_case_insensitive(self):
+        result = self.client._parse_response(
+            {"errorMessage": "NO OFFERS FOUND"}
+        )
+        assert result == []
+
+    def test_parse_response_raises_for_other_api_error_message(self):
+        with pytest.raises(MavApiError, match="Service unavailable"):
+            self.client._parse_response({"errorMessage": "Service unavailable"})
+
+    def test_parse_response_raises_for_non_string_error_message(self):
+        with pytest.raises(MavApiError, match="42"):
+            self.client._parse_response({"errorMessage": 42})
 
     def test_parse_response_raises_when_route_missing(self):
         with pytest.raises(MavApiError, match="missing route"):
@@ -511,7 +533,7 @@ def test_sensor_native_value_is_datetime_timestamp():
         train_destination="Győr",
         travel_time_minutes=60,
     )
-    coordinator = types.SimpleNamespace(data=[dep])
+    coordinator = types.SimpleNamespace(data=[dep], last_error=None)
     entry = types.SimpleNamespace(
         data={
             CONF_START_STATION_CODE: "005501016",
@@ -527,7 +549,7 @@ def test_sensor_native_value_is_datetime_timestamp():
 
 def test_sensor_name_produces_expected_entity_id():
     """Entity name must slugify to 'mav_{start}_{end}' for correct entity_id."""
-    coordinator = types.SimpleNamespace(data=[])
+    coordinator = types.SimpleNamespace(data=[], last_error=None)
     entry = types.SimpleNamespace(
         data={
             CONF_START_STATION_CODE: "005510157",
@@ -572,3 +594,112 @@ def test_async_setup_registers_card_resource():
     assert "mav-departure-card.js" in static_path_config.path
     ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)
     assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True
+
+
+def test_register_card_is_idempotent():
+    """Verify _register_card registers the card and is idempotent on repeat calls."""
+    from custom_components.mav_departure import _register_card, CARD_URL
+
+    ha_frontend.add_extra_js_url.reset_mock()
+
+    mock_hass = MagicMock()
+    mock_hass.data = {}
+    # Simulate async_setup having been skipped (http was None at that time)
+    mock_hass.http = MagicMock()
+    mock_hass.http.async_register_static_paths = AsyncMock()
+
+    asyncio.run(_register_card(mock_hass))
+
+    mock_hass.http.async_register_static_paths.assert_called_once()
+    ha_frontend.add_extra_js_url.assert_called_once_with(mock_hass, CARD_URL)
+    assert mock_hass.data["mav_departure"]["_internal"]["card_registered"] is True
+
+    # Calling again should be a no-op (idempotent)
+    ha_frontend.add_extra_js_url.reset_mock()
+    mock_hass.http.async_register_static_paths.reset_mock()
+
+    asyncio.run(_register_card(mock_hass))
+
+    mock_hass.http.async_register_static_paths.assert_not_called()
+    ha_frontend.add_extra_js_url.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Coordinator & sensor — last_error surfacing
+# ---------------------------------------------------------------------------
+
+
+def test_sensor_exposes_last_error_none_on_success():
+    """extra_state_attributes includes last_error=None when no error."""
+    coordinator = types.SimpleNamespace(data=[], last_error=None)
+    entry = types.SimpleNamespace(
+        data={
+            CONF_START_STATION_CODE: "005501016",
+            CONF_END_STATION_CODE: "005500709",
+        }
+    )
+    sensor = MavDepartureSensor(coordinator, entry)
+    attrs = sensor.extra_state_attributes
+    assert ATTR_LAST_ERROR in attrs
+    assert attrs[ATTR_LAST_ERROR] is None
+
+
+def test_sensor_exposes_last_error_message():
+    """extra_state_attributes includes last_error with the error message."""
+    coordinator = types.SimpleNamespace(
+        data=[], last_error="MÁV API returned HTTP 503: Service Unavailable"
+    )
+    entry = types.SimpleNamespace(
+        data={
+            CONF_START_STATION_CODE: "005501016",
+            CONF_END_STATION_CODE: "005500709",
+        }
+    )
+    sensor = MavDepartureSensor(coordinator, entry)
+    attrs = sensor.extra_state_attributes
+    assert attrs[ATTR_LAST_ERROR] == "MÁV API returned HTTP 503: Service Unavailable"
+
+
+def test_coordinator_stores_last_error_on_failure():
+    """Coordinator.last_error is set when the API raises MavApiError."""
+    from custom_components.mav_departure.coordinator import MavDepartureCoordinator
+
+    mock_client = MagicMock()
+    mock_client.get_departures = AsyncMock(
+        side_effect=MavApiError("gateway timeout")
+    )
+
+    coordinator = MavDepartureCoordinator(
+        hass=MagicMock(),
+        client=mock_client,
+        start_station_code="005501016",
+        end_station_code="005500709",
+    )
+    assert coordinator.last_error is None
+
+    with pytest.raises(_FakeUpdateFailed, match="Error communicating with MÁV API"):
+        asyncio.run(coordinator._async_update_data())
+
+    assert coordinator.last_error == "gateway timeout"
+
+
+def test_coordinator_clears_last_error_on_success():
+    """Coordinator.last_error is cleared after a successful update."""
+    from custom_components.mav_departure.coordinator import MavDepartureCoordinator
+
+    mock_client = MagicMock()
+    mock_client.get_departures = AsyncMock(return_value=[])
+
+    coordinator = MavDepartureCoordinator(
+        hass=MagicMock(),
+        client=mock_client,
+        start_station_code="005501016",
+        end_station_code="005500709",
+    )
+    # Simulate a prior error
+    coordinator.last_error = "previous error"
+
+    result = asyncio.run(coordinator._async_update_data())
+
+    assert result == []
+    assert coordinator.last_error is None
