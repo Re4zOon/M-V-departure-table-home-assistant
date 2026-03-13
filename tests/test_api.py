@@ -59,6 +59,7 @@ class _FakeConfigFlow:
 
 ha_ce.ConfigEntry = object
 ha_ce.ConfigFlow = _FakeConfigFlow
+ha_ce.ConfigFlowResult = dict
 ha_ce.FlowResult = dict
 
 # homeassistant.core

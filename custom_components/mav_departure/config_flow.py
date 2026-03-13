@@ -7,7 +7,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -56,14 +56,14 @@ async def _validate_station_codes(
     return None
 
 
-class MavDepartureConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class MavDepartureConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for MÁV Departure Table."""
 
     VERSION = 1
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.FlowResult:
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
 
         if user_input is not None:
